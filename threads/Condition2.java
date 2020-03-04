@@ -20,7 +20,7 @@ public class Condition2 {
 	 * <tt>wake()</tt>, or <tt>wakeAll()</tt>.
 	 */
 	public Condition2(Lock conditionLock) {
-		this.conditionLock = conditionLock;
+		this.conditionLock = conditionLock;//possible to keep track of threads with a thread count with this
 	}
 
 	/**
@@ -32,9 +32,17 @@ public class Condition2 {
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-		conditionLock.release();
+		/*Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean Stat = Machine.interrupt().disable();
+		conditionLock.release();//we can disable interripts here then shift thread to wait and then sleep after restore the machine
+		ThreadedQueue sleepyQueue = ThreadedKernel.scheduler.newThreadQueue(true); 
+		sleepyQueue.waitForAccess(KThread.currentThread());//add the current thread from Kthread to the queue
+		KThread.sleep(); //sleep currentn thread
 
-		conditionLock.acquire();
+
+             Machine.interrupt().restore(Stat);
+		conditionLock.acquire();*/
+
 	}
 
 	/**
@@ -43,6 +51,7 @@ public class Condition2 {
 	 */
 	public void wake() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		
 	}
 
 	/**
