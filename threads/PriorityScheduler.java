@@ -148,8 +148,8 @@ public class PriorityScheduler extends Scheduler {
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-			
-			return waitQueue.pollFirst().thread; //removes next thread from queue
+			KThread nextThread = waitQueue.pollFirst();
+			return nextThread; //removes next thread from queue
 		}
 
 		/**
@@ -160,7 +160,9 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-			return waitQueue.pollFirst(); //returns ThreadState associated with next thread in the queue
+			ThreadState nextThread = waitQueue.pollFirst();
+			nextThread.queueWaitingIn = null;
+			return nextThread //returns ThreadState associated with next thread in the queue
 		}
 
 		public void print() {
@@ -174,11 +176,7 @@ public class PriorityScheduler extends Scheduler {
 		
 			
 		}
-		public void dequeue(ThreadState ts) {
-			Lib.assertTrue(Machine.interrupt().disabled());
-			waitQueue.remove(ts);
-			ts.queueWaitingIn = null;
-		}
+		
 		public boolean isEmpty() {
 			if(waitQueue.size() == 0) {
 				return true;
