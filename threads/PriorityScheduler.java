@@ -1,6 +1,8 @@
 package nachos.threads;
 
+
 import nachos.machine.*;
+
 
 import java.util.TreeSet;
 import java.util.HashSet;
@@ -110,7 +112,7 @@ public class PriorityScheduler extends Scheduler {
 	/**
 	 * The maximum priority that a thread can have. Do not change this value.
 	 */
-	public static final int priorityMaximum = 7;
+  	public static final int priorityMaximum = 7;
 
 	/**
 	 * Return the scheduling state of the specified thread.
@@ -146,7 +148,8 @@ public class PriorityScheduler extends Scheduler {
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-			return null;
+			
+			return waitQueue.pollFirst().thread; //removes next thread from queue
 		}
 
 		/**
@@ -157,12 +160,32 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-			return null;
+			return waitQueue.pollFirst(); //returns ThreadState associated with next thread in the queue
 		}
 
 		public void print() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me (if you want)
+		}
+		public void add(ThreadState ts) { //adds thread to waitqueue
+			Lib.assertTrue(Machine.interrupt().disabled());
+			waitQueue.add(ts);
+			ts.queueWaitingIn = this;
+		
+			
+		}
+		public void dequeue(ThreadState ts) {
+			Lib.assertTrue(Machine.interrupt().disabled());
+			waitQueue.remove(ts);
+			ts.queueWaitingIn = null;
+		}
+		public boolean isEmpty() {
+			if(waitQueue.size() == 0) {
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
 
 		/**
@@ -170,6 +193,9 @@ public class PriorityScheduler extends Scheduler {
 		 * threads to the owning thread.
 		 */
 		public boolean transferPriority;
+		public TreeSet<ThreadState> waitQueue = new TreeSet<ThreadState>();
+		protected ThreadState queueholder = null; 
+		
 	}
 
 	/**
@@ -179,13 +205,35 @@ public class PriorityScheduler extends Scheduler {
 	 * 
 	 * @see nachos.threads.KThread#schedulingState
 	 */
-	protected class ThreadState {
+	protected class ThreadState implements Comparable<ThreadState>{
 		/**
 		 * Allocate a new <tt>ThreadState</tt> object and associate it with the
 		 * specified thread.
 		 * 
 		 * @param thread the thread this state belongs to.
 		 */
+		
+		public int compareTo(ThreadState a) {
+			if(a.ePriority == this.ePriority) {
+				if(a.waitTime > this.waitTime) {
+					return -1;
+				}
+				else {
+					return 1;
+				}
+			}
+			else if(a.ePriority > this.ePriority) {
+				return -1;
+			}
+			else if(a == null) {
+				return -1;
+			}
+			else {
+				return 1;
+			}
+		}
+		
+		
 		public ThreadState(KThread thread) {
 			this.thread = thread;
 
@@ -208,7 +256,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public int getEffectivePriority() {
 			// implement me
-			return priority;
+			return ePriority;
 		}
 
 		/**
@@ -221,8 +269,14 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-
+			
 			// implement me
+			if(this.recievedDonation == false) { 
+				/*if no priority has been donated to the thread then 
+				* effectivePriority = Priority*/
+				this.ePriority = priority;
+			}
+				
 		}
 
 		/**
@@ -239,6 +293,17 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
+			Machine.interrupt().disable();
+			Lib.assertTrue(waitQueue.transferPriority == true);
+			waitTime = Machine.timer().getTime(); //record wait time for comparison
+			waitQueue.add(this); //add this thread to the waitqueue
+			this.thread.sleep(); //put thread to sleep- (shouldn't it just be KThread.sleep())
+			if(this.getEffectivePriority() > waitQueue.queueholder.getEffectivePriority()) {
+				DonatePriority(waitQueue.queueholder);
+			}
+			Machine.interrupt().enable();
+			
+			
 		}
 
 		/**
@@ -253,6 +318,17 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void acquire(PriorityQueue waitQueue) {
 			// implement me
+			Machine.interrupt().disable();
+			
+			if(waitQueue.isEmpty()) { //make sure queue is empty
+				waitQueue.queueholder = this; //set thread as queueholder 
+			}
+			Machine.interrupt().enable();
+		}
+		public void DonatePriority(ThreadState Queueholder) {
+			Queueholder.ePriority = this.ePriority; //thread donates priority to Queueholder
+			Queueholder.recievedDonation = true; //signals that priority has been donated to the queueholder
+			
 		}
 
 		/** The thread with which this object is associated. */
@@ -260,5 +336,9 @@ public class PriorityScheduler extends Scheduler {
 
 		/** The priority of the associated thread. */
 		protected int priority;
+		protected int ePriority;
+		protected long waitTime;
+		protected boolean recievedDonation = false;
+		PriorityQueue queueWaitingIn = null;
 	}
 }
