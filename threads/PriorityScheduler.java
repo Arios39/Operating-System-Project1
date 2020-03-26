@@ -9,7 +9,7 @@ import java.util.ListIterator;
 import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.Iterator;
-
+import java.util.ArrayList;
 /**
  * A scheduler that chooses threads based on their priorities.
  * 
@@ -146,7 +146,6 @@ public class PriorityScheduler extends Scheduler {
 
 		public void acquire(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
-			System.out.println("---------call to 2nd acquire is made---------------------");
 			getThreadState(thread).acquire(this);
 		}
 
@@ -159,8 +158,11 @@ public class PriorityScheduler extends Scheduler {
 				ts.queuesIOwn.remove(this); //remove this waitQueue from the Linked List
 				ts.holding = null; //it is not the queueholder of any queue
 				ts.queuesIOwn.add(this); //the thread is now waiting in this queue
+				return ts.thread;
 			}
-			return ts.thread;
+			
+				return null;
+		
 		}
 
 		/**
@@ -171,7 +173,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-			if(!waitQueue.isEmpty()) {
+			if(waitQueue.size() > 0) {
 				return waitQueue.first(); //returns ThreadState associated with next thread in the queue
 			}
 			else {
@@ -181,7 +183,7 @@ public class PriorityScheduler extends Scheduler {
 
 		public void print() {
 			Lib.assertTrue(Machine.interrupt().disabled());
-			System.out.println("LinkedList:" + this.waitQueue.first().thread.getName()); 
+			//System.out.println("LinkedList:" + this.waitQueue.first().thread.getName()); 
 		}
 		public void add(ThreadState ts) { //adds thread to waitqueue
 			Lib.assertTrue(Machine.interrupt().disabled());
@@ -281,15 +283,18 @@ public class PriorityScheduler extends Scheduler {
 		}
 		public void UpdateEPriority() {
 			int newPriority = this.getPriority(); //initialize are update (set) value as original priority
-			Iterator itr = queuesIOwn.iterator(); 
-			while(itr.hasNext()) { //iterate through linked list of priority queues
-				PriorityQueue queue = (PriorityQueue)itr.next(); //choose the next priority queue
-				ThreadState DonatingThread = queue.pickNextThread();//Within the queue, find the next thread	
-				if(DonatingThread != null && queue.transferPriority == true ) { // as long as such a thread exists,
-					//System.out.println(this.thread.getName() + " DonatingThread is " + DonatingThread.thread.getName());
-					if(DonatingThread.getEffectivePriority() > newPriority) {// check the effective priority of that thread versus our original priority
-						newPriority = DonatingThread.getEffectivePriority();// if effective priority is greater, assign set value to it
-						
+			if(this.queuesIOwn != null ) {
+				//Iterator<PriorityQueue> itr = queuesIOwn.iterator(); 
+				for(PriorityQueue queue: queuesIOwn) { //iterate through linked list of priority queues
+					if(queue != null) {	
+						//PriorityQueue queue = (PriorityQueue)itr.next(); //choose the next priority queue
+						ThreadState DonatingThread = queue.pickNextThread();//Within the queue, find the next thread	
+						if(DonatingThread != null && queue.transferPriority == true ) { // as long as such a thread exists,
+							//System.out.println(this.thread.getName() + " DonatingThread is " + DonatingThread.thread.getName());
+							if(DonatingThread.getEffectivePriority() > newPriority) {// check the effective priority of that thread versus our original priority
+								newPriority = DonatingThread.getEffectivePriority();// if effective priority is greater, assign set value to it
+							}
+						}
 					}
 				}
 			}
@@ -297,7 +302,8 @@ public class PriorityScheduler extends Scheduler {
 				newPriority = this.getPriority(); //if it is not , reassign the initial priority value for setting
 			}
 			this.setEffectivePriority(newPriority);// send set value to update function
-			if(this.holding != null) { // check for existence of queue holder for this thread
+			if(this.holding != null && this.holding.queueholder != this) { // check for existence of queue holder for this thread
+			
 				this.holding.queueholder.UpdateEPriority();	// call function for queue holder as their value needs to be updated since this value was updated
 			}
 		}
@@ -365,23 +371,20 @@ public class PriorityScheduler extends Scheduler {
 			//	System.out.println("---------queue added to linked list---------------------");
 				this.UpdateEPriority();
 			}
+			
 		//	Machine.interrupt().enable();
 		}
 		
-		
-
 		/** The thread with which this object is associated. */
 		protected KThread thread;
-
+		
 		/** The priority of the associated thread. */
 		protected int priority;
 		protected int ePriority;
 		protected PriorityQueue holding; // the queue that contains the thread being utilized
 		protected long waitTime; // for recording the wait time of each thread
-		protected LinkedList<PriorityQueue> queuesIOwn = new LinkedList<PriorityQueue>();
+		protected ArrayList<PriorityQueue> queuesIOwn = new ArrayList<PriorityQueue>();
 		//queues that the thread being utilized is the queue holder of 
 	}
 
-
-	
 }
